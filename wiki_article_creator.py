@@ -20,11 +20,11 @@ def create_composite_image(background_path, overlay_path, image_path, badge_path
     # Appliquer le mode produit
     overlay_with_alpha = ImageChops.multiply(background, overlay)
 
-    composite = Image.alpha_composite(overlay_with_alpha, badge)
     # Superposer le PNG sur le résultat du mode produit
-    composite_with_badge = Image.alpha_composite(composite, image)
+    composite = Image.alpha_composite(overlay_with_alpha, image)
 
     # Superposer la pastille sur le résultat précédent
+    composite_with_badge = Image.alpha_composite(composite, badge)
 
     # Sauvegarder l'image résultante
     composite_with_badge.save("composite_image.png")
