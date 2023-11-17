@@ -1,7 +1,19 @@
+import os
+import shutil
+
 from PIL import Image, ImageChops
 
+import json
 
-def create_composite_image(background_path, overlay_path, image_path, badge_path):
+# Chemin vers votre fichier JSON
+file_path = 'json/data.json'
+
+# Ouvrir le fichier JSON et charger les données
+with open(file_path, 'r', encoding='utf-8') as file:
+    data = json.load(file)
+
+
+def create_composite_image(output_path, background_path, overlay_path, image_path, element_path=None):
     # Charger le fond (calque 1), qui définira la taille de l'image finale
     background = Image.open(background_path).convert("RGBA")
 
@@ -12,10 +24,16 @@ def create_composite_image(background_path, overlay_path, image_path, badge_path
         new_img.paste(img, position, img)
         return new_img
 
+    # Fonction pour aligner une image en haut sur un fond transparent de la taille du fond
+    def align_top_image(img, bg_size):
+        new_img = Image.new("RGBA", bg_size, (0, 0, 0, 0))  # Créer un fond transparent
+        position = ((bg_size[0] - img.size[0]) // 2, 0)  # Aligner en haut
+        new_img.paste(img, position, img)
+        return new_img
+
     # Charger et centrer les images
     overlay = center_image(Image.open(overlay_path).convert("RGBA"), background.size)
-    image = center_image(Image.open(image_path).convert("RGBA"), background.size)
-    badge = center_image(Image.open(badge_path).convert("RGBA"), background.size)
+    image = align_top_image(Image.open(image_path).convert("RGBA"), background.size)
 
     # Appliquer le mode produit
     overlay_with_alpha = ImageChops.multiply(background, overlay)
@@ -23,19 +41,23 @@ def create_composite_image(background_path, overlay_path, image_path, badge_path
     # Superposer le PNG sur le résultat du mode produit
     composite = Image.alpha_composite(overlay_with_alpha, image)
 
-    # Superposer la pastille sur le résultat précédent
-    composite_with_badge = Image.alpha_composite(composite, badge)
+    if element_path:
+        badge = center_image(Image.open(element_path).convert("RGBA"), background.size)
+        # Superposer la pastille sur le résultat précédent
+        composite = Image.alpha_composite(composite, badge)
 
     # Sauvegarder l'image résultante
-    composite_with_badge.save("composite_image.png")
-
-    return composite_with_badge
+    composite.save(output_path)
 
 
-# Exemple d'utilisation de la fonction avec des chemins fictifs et une position fictive pour la pastille
-# Vous devrez remplacer 'background.png', 'overlay.png', etc. par les chemins de vos propres fichiers
-# Et (50, 50) par les coordonnées x, y où vous voulez placer la pastille
-
-# Veuillez noter que les fichiers ne sont pas présents dans cet environnement,
-# ce code est uniquement à titre d'exemple et ne sera pas exécuté ici.
-create_composite_image('img/background.png', 'img/overlay/4.png', 'img/familier/potofeu.png', 'img/element/pyro.png')
+# Générer et sauvegarder les tableaux wiki pour les armes, calvities et items
+for category in ['armes', 'calvs', 'items', 'familiers']:
+    for x in data[category]:
+        if "element" in x:
+            create_composite_image(f'img/output/{category}/{x["name"]} skill.png', f'img/background.png',
+                                   f'img/overlay/{x["rarity"]}.png', f'img/{category}/{x["short"]}.png',
+                                   f'img/element/{x["element"]}.png')
+        else:
+            create_composite_image(f'img/output/{category}/{x["name"]} skill.png', f'img/background.png',
+                                   f'img/overlay/{x["rarity"]}.png', f'img/{category}/{x["short"]}.png')
+        print(x["name"])
